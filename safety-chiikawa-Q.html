@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>吉伊卡哇風格：台灣全民安全指引學習機</title>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --chiikawa-pink: #ffb8d1;
+            --chiikawa-blue: #89cff0;
+            --chiikawa-yellow: #fff59d;
+            --chiikawa-brown: #5d4037;
+            --chiikawa-green: #77dd77;
+            --chiikawa-red: #ff6961;
+        }
+
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            color: var(--chiikawa-brown);
+            background-color: #fff;
+            /* Polka Dot Background */
+            background-image: radial-gradient(var(--chiikawa-pink) 20%, transparent 20%),
+                              radial-gradient(var(--chiikawa-blue) 20%, transparent 20%);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            /* Prevent bounce on mobile */
+            overscroll-behavior: none;
+            touch-action: manipulation;
+        }
+
+        .chiikawa-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 4px solid var(--chiikawa-pink);
+            border-radius: 30px;
+            box-shadow: 8px 8px 0px var(--chiikawa-blue);
+        }
+
+        .btn-base {
+            transition: all 0.1s;
+            border-radius: 20px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+        }
+        
+        .btn-base:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        .keypad-btn {
+            background-color: var(--chiikawa-blue);
+            color: white;
+            font-size: 1.5rem;
+            border-radius: 25px;
+            height: 60px;
+        }
+
+        .action-btn {
+            background-color: var(--chiikawa-yellow);
+            color: var(--chiikawa-brown);
+        }
+
+        /* Mode Switcher Tabs */
+        .tab-active {
+            background-color: var(--chiikawa-pink);
+            color: white;
+            border: 3px solid var(--chiikawa-pink);
+        }
+        .tab-inactive {
+            background-color: white;
+            color: var(--chiikawa-brown);
+            border: 3px solid var(--chiikawa-pink);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 0px; }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex justify-center items-center">
+
+    <div id="root" class="w-full h-full max-w-md mx-auto relative"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Data: 台灣全民安全指引 ---
+        const DATA = {
+            "01平時的準備": [
+                { id: 1, type: "number", q: "緊急避難包內的食物和水，建議要準備幾天份？", a: "3", unit: "天", context: "專家建議：緊急避難包要準備 3 天份的食物和水，才足夠等待救援喔！" },
+                { id: 2, type: "number", q: "緊急避難包至少每幾年要檢查一次內容物？", a: "0.5", displayA: "半年", inputHint:"(0.5年)", context: "記得每半年 (0.5年) 就要檢查一次，看看食物有沒有過期，電池有沒有電。" },
+                { id: 3, type: "number", q: "家庭防災卡需要約定幾個緊急集合點？", a: "2", unit: "個", context: "要約定 2 個集合點：一個在住家附近，另一個在社區外（例如學校或公園）。" }
+            ],
+            "02當危機來臨時": [
+                { id: 4, type: "number", q: "防空警報的「長音」是幾秒鐘？", a: "15", unit: "秒", context: "防空警報聲音是：1長聲 (15秒)，2短聲 (各5秒)，中間間隔5秒。" },
+                { id: 5, type: "number", q: "防空警報的「短音」是幾秒鐘？", a: "5", unit: "秒", context: "記住口訣：長聲15秒，短聲5秒，聽到這個聲音要趕快躲起來！" },
+                { id: 6, type: "number", q: "防空警報每次間隔是幾秒？", a: "5", unit: "秒", context: "長聲跟短聲中間，會有 5 秒鐘的安靜間隔。" },
+                { id: 7, type: "number", q: "防空警報總共會循環幾次？", a: "3", unit: "次", context: "這個聲音組合會連續播放 3 次，代表真的有空襲警報。" },
+                { id: 8, type: "number", q: "整個防空警報響完總共是幾秒？", a: "115", unit: "秒", context: "全部加起來：(15+5+5+5+5) x 3 = 115 秒！" }
+            ],
+            "03收穫家園": [
+                { id: 9, type: "number", q: "解除警報時，會響一聲長音，長達幾秒？", a: "90", unit: "秒", context: "解除警報的聲音很單純，就是一聲長長的 90 秒聲音，代表安全了。" },
+                { id: 10, type: "number", q: "遭遇火災時，如果你在室內，應該採取什麼姿勢爬行？", a: "1", displayA: "低姿勢", inputHint: "(輸入1代表低)", context: "濃煙會往上飄，所以我們要採「低姿勢」沿著牆壁爬行逃生。" }
+            ]
+        };
+
+        const CATEGORIES = Object.keys(DATA);
+
+        // --- Audio System ---
+        const playTone = (freq, type, duration) => {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + duration);
+        };
+
+        const playDingDong = () => {
+            // C5 -> G5 (Happy sound)
+            playTone(523.25, 'sine', 0.5); 
+            setTimeout(() => playTone(783.99, 'sine', 0.6), 200);
+        };
+
+        const speak = (text, isMuted) => {
+            if (isMuted || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel(); // Stop previous
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 1.1; // Slightly faster for kids
+            utterance.pitch = 1.3; // Higher pitch for "cute" effect
+            window.speechSynthesis.speak(utterance);
+        };
+
+        // --- Components ---
+
+        const Keypad = ({ onInput, onClear, onEnter, disabled }) => {
+            const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9",".", "C", "0", "OK"];
+            
+            return (
+                <div className="grid grid-cols-3 gap-3 p-4 bg-white/50 rounded-t-[40px] border-t-4 border-[var(--chiikawa-pink)]">
+                    {keys.map(k => {
+                        let bgColor = "var(--chiikawa-blue)";
+                        if (k === "C") bgColor = "var(--chiikawa-red)";
+                        if (k === "OK") bgColor = "var(--chiikawa-green)";
+
+                        return (
+                            <button
+                                key={k}
+                                disabled={disabled}
+                                onClick={() => {
+                                    if (k === "C") onClear();
+                                    else if (k === "OK") onEnter();
+                                    else onInput(k);
+                                }}
+                                className="btn-base keypad-btn text-2xl shadow-md"
+                                style={{ backgroundColor: bgColor }}
+                            >
+                                {k === "OK" ? "✨" : k}
+                            </button>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [curCatIdx, setCurCatIdx] = useState(0);
+            const [curQIdx, setCurQIdx] = useState(0);
+            const [mode, setMode] = useState('recite'); // 'recite' | 'quiz'
+            const [input, setInput] = useState("");
+            const [isMuted, setIsMuted] = useState(false);
+            const [feedback, setFeedback] = useState('idle'); // 'idle', 'correct', 'wrong'
+            const [praise, setPraise] = useState("");
+            const [targetVoice, setTargetVoice] = useState(null);
+            useEffect(() => {
+                const loadVoices = () => {
+                    const voices = window.speechSynthesis.getVoices();
+                    // 優先順序：iOS 美佳 > Google 中文 > 任何台灣中文 > 任何中文
+                    const bestVoice = 
+                        voices.find(v => v.name.includes("Mei-Jia")) || 
+                        voices.find(v => v.name.includes("Google") && v.lang.includes("zh-TW")) ||
+                        voices.find(v => v.lang === "zh-TW") ||
+                        voices.find(v => v.lang.includes("zh"));
+
+                    if (bestVoice) {
+                        setTargetVoice(bestVoice); // 把找到的好聲音存起來
+                    }
+                };
+                
+                window.speechSynthesis.onvoiceschanged = loadVoices;
+                loadVoices();
+            }, []);
+            const speak = (text, checkMute) => {
+        if (checkMute || !window.speechSynthesis) return;
+        
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        if (targetVoice) {
+            utterance.voice = targetVoice;
+        }
+        
+        utterance.lang = 'zh-TW';
+        utterance.pitch = 1.1; 
+        utterance.rate = 0.95; 
+        
+        window.speechSynthesis.speak(utterance);
+    };
+
+            const currentQuestions = DATA[CATEGORIES[curCatIdx]];
+            const currentQ = currentQuestions[curQIdx];
+
+            const praises = ["你真棒！", "太強了！", "一百分！", "好厲害！", "天才！"];
+
+            // Reset when category changes
+            useEffect(() => {
+                setCurQIdx(0);
+                setInput("");
+                setFeedback('idle');
+            }, [curCatIdx]);
+
+            // Reset when mode changes
+            useEffect(() => {
+                setInput("");
+                setFeedback('idle');
+                // Read question when switching to quiz
+                if(mode === 'quiz') {
+                    setTimeout(() => speak(currentQ.q, isMuted), 500);
+                }
+            }, [mode, curQIdx]);
+
+            const handleInput = (num) => {
+                if (feedback !== 'idle') return;
+                if (input.length < 5) {
+                    setInput(prev => prev + num);
+                    speak(num, isMuted);
+                }
+            };
+
+            const handleClear = () => {
+                setInput("");
+                speak("清除", isMuted);
+            };
+
+            const handleNextQuestion = () => {
+                if (curQIdx < currentQuestions.length - 1) {
+                    setCurQIdx(prev => prev + 1);
+                } else {
+                    // Loop back or stay
+                    setCurQIdx(0); 
+                    speak("恭喜完成這個單元！", isMuted);
+                }
+                setFeedback('idle');
+                setInput("");
+            };
+
+            const handlePrevQuestion = () => {
+                if (curQIdx > 0) setCurQIdx(prev => prev - 1);
+            };
+
+            const handleCheck = () => {
+                if (feedback !== 'idle' || input === "") return;
+
+                if (input === currentQ.a) {
+                    // CORRECT
+                    setFeedback('correct');
+                    if (!isMuted) playDingDong();
+                    
+                    setTimeout(() => speak("答對了！", isMuted), 600);
+                    
+                    const randomPraise = praises[Math.floor(Math.random() * praises.length)];
+                    setPraise(randomPraise);
+                    
+                    setTimeout(() => speak(randomPraise, isMuted), 1400);
+
+                    // Auto Next
+                    setTimeout(() => {
+                        handleNextQuestion();
+                    }, 3500);
+
+                } else {
+                    // WRONG
+                    setFeedback('wrong');
+                    speak("答錯囉，再試一次", isMuted);
+                    setTimeout(() => {
+                        setInput("");
+                        setFeedback('idle');
+                    }, 1500);
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-full bg-white/30 backdrop-blur-sm">
+                    
+                    {/* Header */}
+                    <div className="p-4 flex justify-between items-center bg-white/80 shadow-sm border-b-4 border-[var(--chiikawa-pink)] rounded-b-[30px] z-10">
+                        <h1 className="text-xl font-bold text-[var(--chiikawa-brown)] flex items-center gap-2">
+                            <span className="text-2xl">🐹</span> 安全小達人
+                        </h1>
+                        <button 
+                            onClick={() => setIsMuted(!isMuted)}
+                            className="text-2xl w-10 h-10 bg-[var(--chiikawa-yellow)] rounded-full flex items-center justify-center border-2 border-[var(--chiikawa-brown)]"
+                        >
+                            {isMuted ? "🔕" : "🔔"}
+                        </button>
+                    </div>
+
+                    {/* Category Selector */}
+                    <div className="px-6 py-2">
+                        <select 
+                            value={curCatIdx}
+                            onChange={(e) => setCurCatIdx(Number(e.target.value))}
+                            className="w-full p-3 rounded-2xl border-2 border-[var(--chiikawa-blue)] bg-white text-[var(--chiikawa-brown)] font-bold text-lg outline-none text-center appearance-none"
+                            style={{ backgroundImage: 'none' }} 
+                        >
+                            {CATEGORIES.map((cat, idx) => (
+                                <option key={cat} value={idx}>{cat}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Mode Tabs */}
+                    <div className="flex px-6 gap-2 mb-2">
+                        <button 
+                            onClick={() => setMode('recite')}
+                            className={`flex-1 py-2 rounded-t-2xl font-bold ${mode === 'recite' ? 'tab-active' : 'tab-inactive'}`}
+                        >
+                            📖 學習
+                        </button>
+                        <button 
+                            onClick={() => setMode('quiz')}
+                            className={`flex-1 py-2 rounded-t-2xl font-bold ${mode === 'quiz' ? 'tab-active' : 'tab-inactive'}`}
+                        >
+                            ✨ 測驗
+                        </button>
+                    </div>
+
+                    {/* Main Display Area (The Card) */}
+                    <div className="flex-1 px-4 pb-2 flex flex-col min-h-0">
+                        <div className={`chiikawa-card flex-1 p-6 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 ${feedback === 'correct' ? 'scale-105 border-[var(--chiikawa-green)]' : ''} ${feedback === 'wrong' ? 'shake border-[var(--chiikawa-red)]' : ''}`}>
+                            
+                            {/* Question Number Badge */}
+                            <div className="absolute top-4 left-4 bg-[var(--chiikawa-blue)] text-white px-3 py-1 rounded-full text-sm font-bold">
+                                Q{curQIdx + 1}/{currentQuestions.length}
+                            </div>
+
+                            {/* Content */}
+                            <div className="w-full text-center z-10">
+                                {mode === 'recite' ? (
+                                    <>
+                                        <div className="text-xl font-bold mb-4">{currentQ.q}</div>
+                                        <div className="text-4xl font-black text-[var(--chiikawa-pink)] mb-2">
+                                            {currentQ.displayA || currentQ.a}
+                                            <span className="text-2xl text-[var(--chiikawa-brown)] ml-1">{currentQ.unit}</span>
+                                        </div>
+                                        <div className="mt-4 p-3 bg-[var(--chiikawa-yellow)]/30 rounded-xl text-md leading-relaxed">
+                                            {currentQ.context}
+                                        </div>
+                                        
+                                        {/* Navigation for Recite Mode */}
+                                        <div className="flex justify-between mt-6 w-full px-4">
+                                            <button onClick={handlePrevQuestion} disabled={curQIdx===0} className="w-12 h-12 bg-[var(--chiikawa-blue)] rounded-full text-white text-2xl disabled:opacity-30">←</button>
+                                            <button onClick={() => speak(currentQ.context, isMuted)} className="w-12 h-12 bg-[var(--chiikawa-pink)] rounded-full text-white text-xl">🔊</button>
+                                            <button onClick={handleNextQuestion} className="w-12 h-12 bg-[var(--chiikawa-blue)] rounded-full text-white text-2xl">→</button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="text-xl font-bold mb-6">{currentQ.q}</div>
+                                        {/* Answer Box */}
+                                        <div className="bg-[var(--chiikawa-brown)] text-[var(--chiikawa-yellow)] p-4 rounded-2xl text-4xl font-mono min-h-[80px] flex items-center justify-center border-4 border-gray-300 shadow-inner w-full max-w-[200px] mx-auto mb-2">
+                                            {input || "?"}
+                                        </div>
+                                        <div className="text-sm text-gray-400 mb-4 h-5">{currentQ.inputHint}</div>
+
+                                        {/* Feedback Overlay Text */}
+                                        {feedback === 'correct' && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20 flex-col">
+                                                <div className="text-6xl mb-2">🎉</div>
+                                                <div className="text-3xl font-black text-[var(--chiikawa-green)]">{praise}</div>
+                                            </div>
+                                        )}
+                                        {feedback === 'wrong' && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20">
+                                                <div className="text-3xl font-black text-[var(--chiikawa-red)]">再試試看！</div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Decorative Background Elements */}
+                            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-[var(--chiikawa-yellow)] rounded-full opacity-20"></div>
+                            <div className="absolute top-10 -left-10 w-20 h-20 bg-[var(--chiikawa-pink)] rounded-full opacity-20"></div>
+                        </div>
+                    </div>
+
+                    {/* Keypad (Only visible in Quiz Mode) */}
+                    {mode === 'quiz' && (
+                        <div className="flex-none">
+                            <Keypad 
+                                onInput={handleInput} 
+                                onClear={handleClear} 
+                                onEnter={handleCheck}
+                                disabled={feedback !== 'idle'}
+                            />
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+    
+    <style>
+        /* CSS Animation for Wrong Answer */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+    </style>
+</body>
+</html>
