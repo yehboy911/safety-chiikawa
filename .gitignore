@@ -1,0 +1,15 @@
+# 作業系統產生之檔案
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 編輯器設定檔
+.vscode/
+.idea/
+*.swp
+
+# 記錄檔 (如果未來有的話)
+*.log
+
+# 暫存檔
+*.tmp
