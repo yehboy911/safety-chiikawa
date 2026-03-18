@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>兒童版：台灣全民安全指引學習機</title>
-    
+
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
+
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
@@ -24,18 +24,17 @@
             --chiikawa-brown: #5d4037;
             --chiikawa-green: #77dd77;
             --chiikawa-red: #ff6961;
+            --chiikawa-orange: #ffcc80;
         }
 
         body {
             font-family: 'Zen Maru Gothic', sans-serif;
             color: var(--chiikawa-brown);
             background-color: #fff;
-            /* Polka Dot Background */
             background-image: radial-gradient(var(--chiikawa-pink) 20%, transparent 20%),
                               radial-gradient(var(--chiikawa-blue) 20%, transparent 20%);
             background-size: 40px 40px;
             background-position: 0 0, 20px 20px;
-            /* Prevent bounce on mobile */
             overscroll-behavior: none;
             touch-action: manipulation;
         }
@@ -56,7 +55,7 @@
             justify-content: center;
             box-shadow: 0 4px 0 rgba(0,0,0,0.1);
         }
-        
+
         .btn-base:active {
             transform: translateY(4px);
             box-shadow: none;
@@ -67,7 +66,7 @@
             color: white;
             font-size: 1.5rem;
             border-radius: 25px;
-            height: 60px;
+            height: 55px;
         }
 
         .action-btn {
@@ -75,7 +74,6 @@
             color: var(--chiikawa-brown);
         }
 
-        /* Mode Switcher Tabs */
         .tab-active {
             background-color: var(--chiikawa-pink);
             color: white;
@@ -87,8 +85,57 @@
             border: 3px solid var(--chiikawa-pink);
         }
 
-        /* Custom Scrollbar */
+        .choice-btn {
+            transition: all 0.15s;
+            border: 3px solid var(--chiikawa-blue);
+            border-radius: 16px;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 1rem;
+            text-align: left;
+            background: white;
+            width: 100%;
+            cursor: pointer;
+        }
+        .choice-btn:active {
+            transform: scale(0.97);
+        }
+        .choice-btn.selected {
+            border-color: var(--chiikawa-pink);
+            background: rgba(255,184,209,0.15);
+        }
+        .choice-btn.correct {
+            border-color: var(--chiikawa-green);
+            background: rgba(119,221,119,0.2);
+        }
+        .choice-btn.wrong {
+            border-color: var(--chiikawa-red);
+            background: rgba(255,105,97,0.15);
+        }
+
         ::-webkit-scrollbar { width: 0px; }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake { animation: shake 0.5s; }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-in { animation: pop 0.4s ease-out; }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden flex justify-center items-center">
@@ -96,98 +143,381 @@
     <div id="root" class="w-full h-full max-w-md mx-auto relative"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- Data: 台灣全民安全指引 (完整版) ---
+        // ==========================================
+        // 題庫資料 — 台灣全民安全指引 (擴充版)
+        // type: "number" = 數字填答, "choice" = 四選一
+        // ==========================================
         const DATA = {
             "01平時的準備": [
-                { 
-                    id: 101, type: "number", q: "日常的居家儲備，建議最少要準備「幾週」的份量？", a: "1", unit: "週", 
-                    context: "【日常居家儲備清單】\n建議準備至少 1 週份量：\n●食品：每人每日3公升水、泡麵、罐頭、堅果、調味料。\n●生活：塑膠袋、保鮮膜、電池、手套、膠帶。\n●衛生：急救箱、口罩、酒精、常備藥、衛生棉。\n●其他：嬰兒奶粉尿布、長輩助聽器電池、寵物飼料與牽繩。" 
+                {
+                    id: 101, type: "number",
+                    q: "日常的居家儲備，建議最少要準備「幾週」的份量？",
+                    a: "1", unit: "週",
+                    context: "【日常居家儲備清單】\n建議準備至少 1 週份量：\n●食品：每人每日3公升水、泡麵、罐頭、堅果、調味料。\n●生活：塑膠袋、保鮮膜、電池、手套、膠帶。\n●衛生：急救箱、口罩、酒精、常備藥、衛生棉。\n●其他：嬰兒奶粉尿布、長輩助聽器電池、寵物飼料與牽繩。"
                 },
-                { 
-                    id: 102, type: "number", q: "食品儲備中，建議「每人每日」至少準備幾公升的飲用水？", a: "3", unit: "公升", 
-                    context: "水是最重要的！每個人每天至少需要 3 公升的飲用水。除了水，也要準備米、罐頭、調理包、餅乾、巧克力等容易保存的食物喔！" 
+                {
+                    id: 102, type: "number",
+                    q: "食品儲備中，建議「每人每日」至少準備幾公升的飲用水？",
+                    a: "3", unit: "公升",
+                    context: "水是最重要的！每個人每天至少需要 3 公升的飲用水。除了水，也要準備米、罐頭、調理包、餅乾、巧克力等容易保存的食物喔！"
                 },
-                { 
-                    id: 103, type: "number", q: "緊急避難包內的物品，至少每「幾年」要檢查一次是否過期或損壞？", a: "0.5", displayA: "半年", inputHint: "(輸入0.5)", 
-                    context: "【緊急避難包檢查】\n記得每「半年 (0.5年)」就要檢查一次！\n確認食物水沒過期、電池有電、藥品在期限內。\n建議放在「大門口」或「玄關」隨手可拿的地方。" 
+                {
+                    id: 103, type: "number",
+                    q: "緊急避難包內的物品，至少每「幾年」要檢查一次是否過期或損壞？",
+                    a: "0.5", displayA: "半年", inputHint: "(輸入0.5)",
+                    context: "【緊急避難包檢查】\n記得每「半年 (0.5年)」就要檢查一次！\n確認食物水沒過期、電池有電、藥品在期限內。\n建議放在「大門口」或「玄關」隨手可拿的地方。"
                 },
-                { 
-                    id: 104, type: "number", q: "一般建議「男性」的緊急避難包，重量不宜超過幾公斤？", a: "15", unit: "公斤", 
-                    context: "【避難包重量建議】\n背太重會跑不動喔！\n●男性建議：15 公斤以內\n●女性建議：10 公斤以內\n請選擇質輕、耐用的雙肩背包。" 
+                {
+                    id: 104, type: "number",
+                    q: "一般建議「男性」的緊急避難包，重量不宜超過幾公斤？",
+                    a: "15", unit: "公斤",
+                    context: "【避難包重量建議】\n背太重會跑不動喔！\n●男性建議：15 公斤以內\n●女性建議：10 公斤以內\n請選擇質輕、耐用的雙肩背包。"
                 },
-                { 
-                    id: 105, type: "number", q: "一般建議「女性」的緊急避難包，重量不宜超過幾公斤？", a: "10", unit: "公斤", 
-                    context: "【避難包重量建議】\n●女性建議：10 公斤以內\n內容物包含：飲用水、乾糧、證件影本、現金零錢、毛巾、保暖衣物、行動電源、哨子、手電筒。" 
+                {
+                    id: 105, type: "number",
+                    q: "一般建議「女性」的緊急避難包，重量不宜超過幾公斤？",
+                    a: "10", unit: "公斤",
+                    context: "【避難包重量建議】\n●女性建議：10 公斤以內\n內容物包含：飲用水、乾糧、證件影本、現金零錢、毛巾、保暖衣物、行動電源、哨子、手電筒。"
+                },
+                {
+                    id: 106, type: "choice",
+                    q: "緊急避難包建議放在家裡的什麼位置？",
+                    choices: ["大門口或玄關", "衣櫃裡面", "床底下", "陽台"],
+                    a: 0,
+                    context: "【避難包放置位置】\n建議放在「大門口」或「玄關」等隨手可拿的地方。危機來臨時才能立刻取用，迅速逃離！"
+                },
+                {
+                    id: 107, type: "choice",
+                    q: "日常居家儲備採用什麼方式，可以讓防災簡單又無負擔？",
+                    choices: ["循環儲備法：儲備→使用→補充", "一次買很多放著不動", "等到快過期再全部丟掉重買", "只買罐頭就好"],
+                    a: 0,
+                    context: "【循環儲備法】\n平時儲備→使用→再補充，這樣東西不會過期浪費，防災也變得簡單無負擔！"
+                },
+                {
+                    id: 108, type: "choice",
+                    q: "緊急避難包裡的「飲用水」建議帶多少？",
+                    choices: ["兩瓶600ml的水", "一大桶20公升的水", "不用帶水", "十瓶礦泉水"],
+                    a: 0,
+                    context: "【避難包飲用水】\n避難包要輕便好攜帶，建議帶兩瓶 600ml 的水即可。大量飲用水是放在家裡的居家儲備喔！"
+                },
+                {
+                    id: 109, type: "choice",
+                    q: "下列哪一項不適合放在緊急避難包裡？",
+                    choices: ["大型電視", "手電筒和電池", "哨子", "身分證影本"],
+                    a: 0,
+                    context: "【避難包內容物】\n避難包要輕便好攜帶！放入手電筒、哨子、證件影本、乾糧、飲水、常備藥等必需品。大型電視太重也不實用。"
+                },
+                {
+                    id: 110, type: "choice",
+                    q: "停電的時候，下列哪些東西可能會失效？",
+                    choices: ["電動鐵捲門、電子鎖、電梯", "機械式門鎖", "腳踏車", "紙本地圖"],
+                    a: 0,
+                    context: "【停電影響】\n電動鐵捲門、電子鎖、對講機鎖、電梯等，都可能在停電時失效。平時要想好替代方案！"
+                },
+                {
+                    id: 111, type: "choice",
+                    q: "為什麼家裡最好備有「可攜式收音機」？",
+                    choices: ["停電或網路中斷時可收聽廣播獲取資訊", "可以聽音樂放鬆", "可以當手電筒", "可以打電話"],
+                    a: 0,
+                    context: "【收音機的重要性】\n當停電或網路中斷時，手機可能沒電或沒訊號，這時候可攜式收音機就是最可靠的資訊來源！"
+                },
+                {
+                    id: 112, type: "number",
+                    q: "緊急避難包裡的飲用水，建議攜帶幾瓶600ml的水？",
+                    a: "2", unit: "瓶",
+                    context: "【避難包飲用水】\n建議攜帶兩瓶 600ml 的水（共1.2公升），既夠喝又不會太重，方便快速避難！"
                 }
             ],
             "02當危機來臨時": [
-                { 
-                    id: 201, type: "number", q: "防空警報的「長音」是持續幾秒鐘？", a: "15", unit: "秒", 
-                    context: "【防空警報識別】\n●長音：15秒\n●短音：5秒\n●間隔：5秒\n這個循環會重複3次，總共115秒。聽到這個聲音要立刻配合避難！" 
+                {
+                    id: 201, type: "number",
+                    q: "防空警報的「長音」是持續幾秒鐘？",
+                    a: "15", unit: "秒",
+                    context: "【防空警報識別】\n●長音：15秒\n●短音：5秒\n●間隔：5秒\n這個循環會重複3次，總共115秒。聽到這個聲音要立刻配合避難！"
                 },
-                { 
-                    id: 202, type: "number", q: "防空警報解除時，會響一聲長音，長達幾秒？", a: "90", unit: "秒", 
-                    context: "當你聽到一聲長長的、連續 90 秒的聲音，就代表「警報解除」了，可以恢復正常活動，但還是要隨時注意新聞。" 
+                {
+                    id: 202, type: "number",
+                    q: "防空警報解除時，會響一聲長音，長達幾秒？",
+                    a: "90", unit: "秒",
+                    context: "當你聽到一聲長長的、連續 90 秒的聲音，就代表「警報解除」了，可以恢復正常活動，但還是要隨時注意新聞。"
                 },
-                { 
-                    id: 203, type: "number", q: "海嘯警報的「鳴聲」是幾秒鐘？", a: "5", unit: "秒", 
-                    context: "【海嘯警報】\n聲音模式：鳴 5 秒、停 5 秒、鳴 5 秒。\n通常會伴隨語音廣播：「海嘯警報，請迅速往高處疏散」。" 
+                {
+                    id: 203, type: "number",
+                    q: "海嘯警報的「鳴聲」是幾秒鐘？",
+                    a: "5", unit: "秒",
+                    context: "【海嘯警報】\n聲音模式：鳴 5 秒、停 5 秒、鳴 5 秒。\n通常會伴隨語音廣播：「海嘯警報，請迅速往高處疏散」。"
                 },
-                { 
-                    id: 204, type: "number", q: "遭遇海嘯時，建議往內陸高處避難，高度至少約幾層樓以上？", a: "3", unit: "層樓", 
-                    context: "【海嘯避難原則】\n1. 往內陸跑（遠離海岸）。\n2. 往高處跑（垂直避難）。\n建議至少跑到 3 層樓以上的高度才安全。" 
+                {
+                    id: 204, type: "number",
+                    q: "遭遇海嘯時，建議往內陸高處避難，高度至少約幾層樓以上？",
+                    a: "3", unit: "層樓",
+                    context: "【海嘯避難原則】\n1. 往內陸跑（遠離海岸）。\n2. 往高處跑（垂直避難）。\n建議至少跑到 3 層樓以上的高度才安全。"
                 },
-                { 
-                    id: 205, type: "number", q: "操作CPR急救時，胸部按壓深度至少要幾公分？", a: "5", unit: "公分", 
-                    context: "【CPR 口訣：叫叫壓電】\n按壓深度要夠深（至少5公分），速度要夠快（每分鐘100-120下），才能有效幫助心臟輸血。" 
+                {
+                    id: 205, type: "number",
+                    q: "操作CPR急救時，胸部按壓深度至少要幾公分？",
+                    a: "5", unit: "公分",
+                    context: "【CPR 口訣：叫叫壓電】\n按壓深度要夠深（至少5公分），速度要夠快（每分鐘100-120下），才能有效幫助心臟輸血。"
                 },
-                { 
-                    id: 206, type: "number", q: "使用止血帶止血時，應綁在出血點上方約幾公分處？", a: "5", unit: "公分", 
-                    context: "【嚴重出血急救】\n如果有止血帶，綁在傷口上方 5-8 公分處。並記下「開始使用的時間」，交給醫護人員。" 
+                {
+                    id: 206, type: "number",
+                    q: "使用止血帶止血時，應綁在出血點上方約幾公分處？",
+                    a: "5", unit: "公分",
+                    context: "【嚴重出血急救】\n如果有止血帶，綁在傷口上方 5-8 公分處。並記下「開始使用的時間」，交給醫護人員。"
+                },
+                {
+                    id: 207, type: "number",
+                    q: "防空警報的循環會重複幾次？",
+                    a: "3", unit: "次",
+                    context: "【防空警報模式】\n1長聲2短聲的循環會重複 3 次，總共 115 秒。記住這個聲音，聽到就要趕快找地方避難！"
+                },
+                {
+                    id: 208, type: "number",
+                    q: "防空警報的「短音」是持續幾秒鐘？",
+                    a: "5", unit: "秒",
+                    context: "【防空警報識別】\n●長音：15秒\n●短音：5秒\n●間隔：5秒\n1長聲2短聲的循環重複3次，共115秒。"
+                },
+                {
+                    id: 209, type: "number",
+                    q: "CPR胸部按壓的速度，建議每分鐘幾下到120下？",
+                    a: "100", unit: "下",
+                    context: "【CPR按壓速度】\n每分鐘 100-120 下，用力壓、快快壓、胸回彈！兩乳頭連線中央位置，雙手相扣，手臂打直。"
+                },
+                {
+                    id: 210, type: "choice",
+                    q: "地震的時候在室內，第一步應該怎麼做？",
+                    choices: ["趴下，躲在桌下或牆角", "趕快跑到外面", "打開窗戶跳出去", "站在原地不動"],
+                    a: 0,
+                    context: "【地震室內避難三步驟】\n趴下（Drop）→掩護（Cover）→穩住（Hold On）\n躲在桌下或牆角，保護頭部頸部，抓住桌腳。"
+                },
+                {
+                    id: 211, type: "choice",
+                    q: "聽到防空警報時，避難的優先順序是什麼？",
+                    choices: ["地下優於地上，室內優於室外", "室外比較安全", "待在原地就好", "開車逃跑"],
+                    a: 0,
+                    context: "【防空避難原則】\n地下優於地上、室內優於室外、遠離外牆門窗、避開危險物品。進入地下室或防空疏散避難設施為優先。"
+                },
+                {
+                    id: 212, type: "choice",
+                    q: "戶外遇到爆炸或空襲時，正確的防護姿勢是？",
+                    choices: ["趴下、嘴巴微張、保護頭部、背對爆炸方向", "站著看發生什麼事", "趕快拿手機拍照", "大聲喊叫"],
+                    a: 0,
+                    context: "【戶外防護姿勢】\n保持趴下姿勢、嘴巴微張（保護耳膜）、保護頭部、背對爆炸方向、穩定靜止，等待機會移動。"
+                },
+                {
+                    id: 213, type: "choice",
+                    q: "被燒燙傷時，正確的處理口訣是什麼？",
+                    choices: ["沖→脫→泡→蓋→送", "吹→擦→包→走", "壓→綁→抬→送", "看→聽→做→等"],
+                    a: 0,
+                    context: "【燒燙傷急救五步驟】\n沖：大量乾淨冷水沖洗傷口\n脫：去除傷口部位衣物\n泡：持續以冷水浸泡\n蓋：乾淨毛巾或紗布蓋在傷口上\n送：尋求醫療協助"
+                },
+                {
+                    id: 214, type: "choice",
+                    q: "遇到海嘯警報時，以下哪個做法是錯誤的？",
+                    choices: ["開車沿著海岸逃跑", "往高處跑", "往內陸跑", "尋找堅固建築物避難"],
+                    a: 0,
+                    context: "【海嘯避難原則】\n●往高處走（至少3層樓以上）\n●往內陸走（遠離海岸線）\n●找堅固建築物\n●短距離不要使用車輛，車輛容易被沖走！"
+                },
+                {
+                    id: 215, type: "choice",
+                    q: "遇到有人失去意識，CPR的口訣是什麼？",
+                    choices: ["叫叫壓電（叫病人→叫119→壓胸→電擊AED）", "看聽做等", "沖脫泡蓋送", "停看聽"],
+                    a: 0,
+                    context: "【CPR口訣：叫叫壓電】\n叫：確認反應及呼吸\n叫：呼救與撥打119\n壓：CPR胸部按壓\n電：使用AED電擊\n等待救護人員抵達。"
+                },
+                {
+                    id: 216, type: "choice",
+                    q: "遇到毒化物質災害時，應該怎麼做？",
+                    choices: ["用手帕或濕布遮住口鼻，往上風方向離開", "靠近聞聞看是什麼味道", "待在原地不動", "往下風方向跑"],
+                    a: 0,
+                    context: "【毒化物質災害】\n●避：用手帕、濕布遮住口鼻，往上風方向離開\n●脫：到安全區域脫去外衣、遮蔽物\n●沖：以大量清水從頭到腳沖洗\n●蓋：用乾淨外衣覆蓋，注意保暖\n●送：立即就醫"
+                },
+                {
+                    id: 217, type: "choice",
+                    q: "遇到核子事故時，第一步應該？",
+                    choices: ["立即進入室內，關閉門窗", "跑到室外觀察", "打開窗戶通風", "繼續正常活動"],
+                    a: 0,
+                    context: "【核子事故應變】\n停：立即進入室內，關閉門窗\n看：打開電視機、收音機注意政府資訊\n聽：配合政府措施，如疏散、服用碘片等"
+                },
+                {
+                    id: 218, type: "choice",
+                    q: "颱風來臨前，下列哪個準備是正確的？",
+                    choices: ["關窗、加強固定物品、備妥食物與照明", "打開所有窗戶讓風通過", "到海邊看大浪", "外出騎腳踏車"],
+                    a: 0,
+                    context: "【颱風準備】\n●平時做好防颱準備\n●隨時掌握氣象資訊\n●關窗，加強固定物品\n●清除排水溝雜物\n●備妥食物與照明\n●勿外出，避免危險"
+                },
+                {
+                    id: 219, type: "choice",
+                    q: "大量出血時，如果沒有止血帶，可以用什麼替代？",
+                    choices: ["用衣物或毛巾對出血處加壓", "用衛生紙塞住", "什麼都不做等救護車", "用水沖洗傷口"],
+                    a: 0,
+                    context: "【無止血帶時的處理】\n用衣物或毛巾對出血處進行加壓；或使用替代品如圍巾、絲巾，搭配長棍作為臨時止血帶。"
+                },
+                {
+                    id: 220, type: "choice",
+                    q: "搬運沒有骨折的傷患，而且傷勢不重、沒有心臟病，適合用什麼方法？",
+                    choices: ["扶持法", "擔架運送", "椅子運送", "捆負法"],
+                    a: 0,
+                    context: "【搬運傷患方法】\n●扶持法：沒骨折、傷勢不重、沒有心臟病\n●捆負法：長距離，不可下樓、下坡\n●擔架運送：前進時傷者腳朝前；上坡上樓進車進房時傷者頭朝前\n●椅子運送：平地上樓時站椅子前後；下樓時站椅子兩側"
+                },
+                {
+                    id: 221, type: "choice",
+                    q: "地震時如果人在室外，應該怎麼做？",
+                    choices: ["遠離建築物、電線桿、高架橋等危險區域", "趕快跑進最近的建築物", "站在招牌下面", "靠近山坡邊"],
+                    a: 0,
+                    context: "【地震室外避難】\n●遠離建築玻璃招牌掉落區\n●遠離電線桿、高架橋下危險區域\n●使用手提包或帽子保護頭部\n●避開山坡崖邊，防落石崩塌\n●停止搖晃後再行動，保持警覺"
                 }
             ],
             "03守護家園": [
-                { 
-                    id: 301, type: "number", q: "為了辨別假訊息，我們要堅持「幾不一要」原則？", a: "3", unit: "不", 
-                    context: "【假訊息防禦：3不1要】\n1. 不製造\n2. 不輕信\n3. 不轉傳\n★ 要查證\n任何說「國家戰敗」或「投降」的消息，通常都是假訊息！" 
+                {
+                    id: 301, type: "number",
+                    q: "為了辨別假訊息，我們要堅持「幾不一要」原則？",
+                    a: "3", unit: "不",
+                    context: "【假訊息防禦：3不1要】\n1. 不製造\n2. 不輕信\n3. 不轉傳\n★ 要查證\n任何說「國家戰敗」或「投降」的消息，通常都是假訊息！"
                 },
-                { 
-                    id: 302, type: "number", q: "為了資安防護，我們要遵守「四不幾要」原則？", a: "6", unit: "要", 
-                    context: "【資安防護：4不6要】\n●4不：不點不明連結、不亂掃QR、不載可疑App、不連可疑WiFi。\n●6要：密碼要更新、資料要備份、介面要關閉、傳輸要加密、刪除要徹底、訊息要查證。" 
+                {
+                    id: 302, type: "number",
+                    q: "為了資安防護，「四不幾要」原則中有幾個「要」？",
+                    a: "6", unit: "要",
+                    context: "【資安防護：4不6要】\n●4不：不點不明連結、不亂掃QR、不載可疑App、不連可疑WiFi。\n●6要：密碼要更新、資料要備份、介面要關閉、傳輸要加密、刪除要徹底、訊息要查證。"
                 },
-                { 
-                    id: 303, type: "number", q: "遭遇火災或需要緊急救護時，請撥打哪支電話？", a: "119", unit: "號", 
-                    context: "【緊急專線】\n🔥 火災、救護車：119\n👮 報警：110\n🌊 海巡救難：118\n📞 聽語障簡訊報案：簡訊傳至 119" 
+                {
+                    id: 303, type: "number",
+                    q: "遭遇火災或需要緊急救護時，請撥打哪支電話？",
+                    a: "119", unit: "號",
+                    context: "【緊急專線】\n🔥 火災、救護車：119\n👮 報警：110\n🌊 海巡救難：118\n📞 聽語障簡訊報案：簡訊傳至 119"
                 },
-                { 
-                    id: 304, type: "number", q: "如果感到心情焦慮、壓力很大，可以撥打安心專線？", a: "1925", unit: "號", 
-                    context: "【心理支持】\n面對災害感到害怕是正常的。\n如果覺得焦慮，可以撥打「1925 (依舊愛我)」安心專線，尋求專業協助。" 
+                {
+                    id: 304, type: "number",
+                    q: "如果感到心情焦慮、壓力很大，可以撥打安心專線？",
+                    a: "1925", unit: "號",
+                    context: "【心理支持】\n面對災害感到害怕是正常的。\n如果覺得焦慮，可以撥打「1925 (依舊愛我)」安心專線，尋求專業協助。"
                 },
-                { 
-                    id: 305, type: "number", q: "長照服務專線是哪一號？", a: "1966", unit: "號", 
-                    context: "【其他重要專線】\n●長照服務：1966\n●各縣市便民服務：1999\n●反詐騙專線：165" 
+                {
+                    id: 305, type: "number",
+                    q: "長照服務專線是哪一號？",
+                    a: "1966", unit: "號",
+                    context: "【其他重要專線】\n●長照服務：1966\n●各縣市便民服務：1999\n●反詐騙專線：165"
+                },
+                {
+                    id: 306, type: "number",
+                    q: "警政專線（報警）電話是幾號？",
+                    a: "110", unit: "號",
+                    context: "【政府重要緊急專線】\n●警政專線：110\n●緊急救難：112\n●消防專線：119\n●海巡專線：118\n●安心關懷：1925\n●長照服務：1966\n●金融服務：1998\n●縣市政府：1999"
+                },
+                {
+                    id: 307, type: "number",
+                    q: "海巡救難的專線電話是幾號？",
+                    a: "118", unit: "號",
+                    context: "【海巡救難】\n在海邊遇到危險或發現可疑船隻，撥打 118 海巡救難專線！"
+                },
+                {
+                    id: 308, type: "number",
+                    q: "緊急救難的統一專線電話是幾號？",
+                    a: "112", unit: "號",
+                    context: "【緊急救難專線】\n112 是國際通用的緊急救難電話。在手機沒有訊號或沒有SIM卡的情況下，也可以撥打 112 求救！"
+                },
+                {
+                    id: 309, type: "number",
+                    q: "金融服務的專線電話是幾號？",
+                    a: "1998", unit: "號",
+                    context: "【政府重要緊急專線】\n●金融服務：1998\n●縣市政府：1999\n在危機時期，銀行和ATM可能無法使用，可以撥打1998詢問金融相關問題。"
+                },
+                {
+                    id: 310, type: "choice",
+                    q: "「3不1要」原則中的「3不」是指什麼？",
+                    choices: ["不製造、不輕信、不轉傳", "不吃、不喝、不睡", "不跑、不叫、不哭", "不看、不聽、不說"],
+                    a: 0,
+                    context: "【3不1要原則】\n1. 不製造假消息\n2. 不輕信未經證實的消息\n3. 不轉傳來源不明的訊息\n★ 要查證：用官方管道確認消息真假"
+                },
+                {
+                    id: 311, type: "choice",
+                    q: "資安「4不」原則中，下列哪一項是正確的？",
+                    choices: ["不瀏覽可疑網站或點選不明連結", "不要更新密碼", "不用備份資料", "不需要關閉WiFi"],
+                    a: 0,
+                    context: "【資安4不】\n1. 不瀏覽可疑網站或點選不明連結\n2. 不亂掃QR code\n3. 不下載可疑的檔案、App及來路不明的軟體\n4. 不連接可疑的WiFi"
+                },
+                {
+                    id: 312, type: "choice",
+                    q: "如果臺灣遭受軍事侵略，聽到「國家戰敗」或「政府投降」的消息，這通常是什麼？",
+                    choices: ["假訊息", "真的新聞", "應該趕快轉傳", "不用管它"],
+                    a: 0,
+                    context: "【重要提醒】\n倘若臺灣遭受軍事侵略，任何有關國家戰敗或政府宣布投降的訊息，都是假訊息！要堅持3不1要原則。"
+                },
+                {
+                    id: 313, type: "choice",
+                    q: "若網路或通訊中斷，可以透過什麼方式獲取資訊？",
+                    choices: ["收聽廣播電台", "繼續滑手機等網路恢復", "什麼都不做", "問路人"],
+                    a: 0,
+                    context: "【如何獲取資訊】\n若網路或通訊中斷，可透過廣播獲得資訊。若廣播系統也遭破壞，請改至附近派出所、村里辦公室獲取正確資訊。"
+                },
+                {
+                    id: 314, type: "choice",
+                    q: "當住家毀損無法居住時，第一步應該怎麼做？",
+                    choices: ["至鄰近親友家或政府開設的救濟站暫時躲避", "留在毀損的房子裡", "在路邊等待", "自己找空地搭帳篷"],
+                    a: 0,
+                    context: "【住家毀損應對】\n1. 至鄰近親友家暫時躲避 ／ 至政府開設的救濟站\n2. 至救濟站登記身分資料，獲得生活和居住空間\n3. 可獲得穩定膳食、通訊管道、心理輔導資源\n4. 遵守救濟站生活公約，配合情勢轉移或返家"
+                },
+                {
+                    id: 315, type: "choice",
+                    q: "感到焦慮害怕時，以下哪個方式是不建議的？",
+                    choices: ["一直看新聞和網路資訊讓焦慮增加", "與家人朋友談論感受", "維持良好的飲食和運動習慣", "撥打1925安心專線"],
+                    a: 0,
+                    context: "【當我感到焦慮】\n●提升應變能力，做好準備\n●與親友談論感受，降低孤獨感\n●維持良好飲食、睡眠與運動\n●減少閱讀新聞或網路資訊，避免過多資訊導致焦慮增加\n●尋求專業心理機構協助（1925安心專線）"
+                },
+                {
+                    id: 316, type: "choice",
+                    q: "若你發現疑似軍隊活動，應該怎麼做？",
+                    choices: ["儘速離開該危險區域", "靠近看清楚", "拿手機拍照上傳", "大聲呼喊"],
+                    a: 0,
+                    context: "【發現敵軍行蹤】\n●發現疑似軍隊活動，請儘速離開該危險區域\n●若無法及時離開，請立即隱蔽於安全、遠離門窗處\n●勿隨意拍照錄影，上傳我軍軍事動態，以免置我軍於危險"
+                },
+                {
+                    id: 317, type: "choice",
+                    q: "下列哪一個App可能涉及資安風險，需要特別注意？",
+                    choices: ["來路不明的中國製App", "政府官方的消防防災e點通App", "警政服務App", "氣象局App"],
+                    a: 0,
+                    context: "【資安風險提醒】\n部分中國製App，可能涉及個資蒐集風險；一些具備攝影功能的中國品牌設備，如監視器及影像感測器，也可能導致隱私外洩。在危機發生時，這些設備甚至可能被敵方所用。"
+                },
+                {
+                    id: 318, type: "number",
+                    q: "各縣市便民服務專線是幾號？",
+                    a: "1999", unit: "號",
+                    context: "【縣市政府服務專線】\n遇到需要地方政府協助的事情，可以撥打 1999 各縣市便民服務專線！"
+                },
+                {
+                    id: 319, type: "number",
+                    q: "防災士培訓課程需要幾天？",
+                    a: "2", unit: "天",
+                    context: "【防災士培訓】\n2日課程 + 測驗合格 = 防災士證書 + 防災士合格識別證\n培訓課程包括：災害認識、防護措施、基礎急救訓練等。"
+                },
+                {
+                    id: 320, type: "choice",
+                    q: "當民生必需品短缺時，政府會透過什麼機制來提供物資？",
+                    choices: ["配售機制（配售站）", "讓大家自己想辦法", "只照顧有錢人", "不會做任何事"],
+                    a: 0,
+                    context: "【民生必需品短缺】\n當危機發生時，政府會盡全力維持民生經濟穩定，並透過完善的配售機制提供全民生活必需品。同時也建議平時就做好一週份的日常居家儲備。"
                 }
             ]
         };
 
         const CATEGORIES = Object.keys(DATA);
 
-        // --- Audio System ---
+        // ==========================================
+        // 音效系統
+        // ==========================================
         const playTone = (freq, type, duration) => {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!AudioContext) return;
             const ctx = new AudioContext();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-            
             osc.type = type;
             osc.frequency.setValueAtTime(freq, ctx.currentTime);
-            
             gain.gain.setValueAtTime(0.1, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-            
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
@@ -195,28 +525,23 @@
         };
 
         const playDingDong = () => {
-            // C5 -> G5 (Happy sound)
-            playTone(523.25, 'sine', 0.5); 
+            playTone(523.25, 'sine', 0.5);
             setTimeout(() => playTone(783.99, 'sine', 0.6), 200);
         };
 
-        const speak = (text, isMuted) => {
-            if (isMuted || !window.speechSynthesis) return;
-            window.speechSynthesis.cancel(); // Stop previous
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-TW';
-            utterance.rate = 1.1; // Slightly faster for kids
-            utterance.pitch = 1.3; // Higher pitch for "cute" effect
-            window.speechSynthesis.speak(utterance);
+        const playBuzz = () => {
+            playTone(200, 'sawtooth', 0.3);
         };
 
-        // --- Components ---
+        // ==========================================
+        // 元件
+        // ==========================================
 
         const Keypad = ({ onInput, onClear, onEnter, disabled }) => {
             const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9",".", "C", "0", "OK"];
-            
+
             return (
-                <div className="grid grid-cols-3 gap-3 p-4 bg-white/50 rounded-t-[40px] border-t-4 border-[var(--chiikawa-pink)]">
+                <div className="grid grid-cols-3 gap-2 p-3 bg-white/50 rounded-t-[40px] border-t-4 border-[var(--chiikawa-pink)]">
                     {keys.map(k => {
                         let bgColor = "var(--chiikawa-blue)";
                         if (k === "C") bgColor = "var(--chiikawa-red)";
@@ -242,67 +567,126 @@
             );
         };
 
+        const ChoicePanel = ({ choices, onSelect, feedback, selectedIdx, correctIdx, disabled }) => {
+            const labels = ["A", "B", "C", "D"];
+            return (
+                <div className="flex flex-col gap-2 w-full mt-2 px-1">
+                    {choices.map((c, idx) => {
+                        let cls = "choice-btn";
+                        if (feedback === 'correct' && idx === correctIdx) cls += " correct";
+                        else if (feedback === 'wrong' && idx === selectedIdx) cls += " wrong";
+                        else if (feedback === 'wrong' && idx === correctIdx) cls += " correct";
+                        else if (feedback === 'idle' && idx === selectedIdx) cls += " selected";
+
+                        return (
+                            <button
+                                key={idx}
+                                disabled={disabled}
+                                className={cls}
+                                onClick={() => onSelect(idx)}
+                            >
+                                <span className="inline-block w-7 h-7 rounded-full bg-[var(--chiikawa-blue)] text-white text-center leading-7 mr-2 text-sm flex-shrink-0">{labels[idx]}</span>
+                                <span>{c}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 主應用
+        // ==========================================
         const App = () => {
             const [curCatIdx, setCurCatIdx] = useState(0);
             const [curQIdx, setCurQIdx] = useState(0);
-            const [mode, setMode] = useState('recite'); // 'recite' | 'quiz'
+            const [mode, setMode] = useState('recite');
             const [input, setInput] = useState("");
+            const [selectedChoice, setSelectedChoice] = useState(-1);
             const [isMuted, setIsMuted] = useState(false);
-            const [feedback, setFeedback] = useState('idle'); // 'idle', 'correct', 'wrong'
+            const [feedback, setFeedback] = useState('idle');
             const [praise, setPraise] = useState("");
             const [targetVoice, setTargetVoice] = useState(null);
+            const [score, setScore] = useState(0);
+            const [totalAnswered, setTotalAnswered] = useState(0);
+
+            // === 語音引擎：優先選擇台灣口音 ===
             useEffect(() => {
                 const loadVoices = () => {
                     const voices = window.speechSynthesis.getVoices();
-                    // 優先順序：iOS 美佳 > Google 中文 > 任何台灣中文 > 任何中文
-                    const bestVoice = 
-                        voices.find(v => v.name.includes("Mei-Jia")) || 
-                        voices.find(v => v.name.includes("Google") && v.lang.includes("zh-TW")) ||
-                        voices.find(v => v.lang === "zh-TW") ||
-                        voices.find(v => v.lang.includes("zh"));
 
-                    if (bestVoice) {
-                        setTargetVoice(bestVoice); // 把找到的好聲音存起來
+                    // 嚴格的台灣口音優先順序
+                    const twVoicePriority = [
+                        // Apple 裝置台灣中文
+                        v => v.name.includes("Mei-Jia"),
+                        v => v.name.includes("美佳"),
+                        // Google 台灣中文
+                        v => v.name.includes("Google") && v.lang === "zh-TW",
+                        // Microsoft 台灣中文
+                        v => v.name.includes("Hsiao") && v.lang === "zh-TW",
+                        v => v.name.includes("曉") && v.lang === "zh-TW",
+                        // 任何明確標記 zh-TW 的聲音
+                        v => v.lang === "zh-TW",
+                        // 最後備選：zh-HK 港式中文（比大陸口音接近）
+                        v => v.lang === "zh-HK",
+                    ];
+
+                    for (const matcher of twVoicePriority) {
+                        const found = voices.find(matcher);
+                        if (found) {
+                            setTargetVoice(found);
+                            console.log("已選擇語音:", found.name, found.lang);
+                            return;
+                        }
+                    }
+
+                    // 真的找不到任何中文語音才用預設
+                    const anyZh = voices.find(v => v.lang.startsWith("zh"));
+                    if (anyZh) {
+                        setTargetVoice(anyZh);
+                        console.log("備選語音:", anyZh.name, anyZh.lang);
                     }
                 };
-                
+
                 window.speechSynthesis.onvoiceschanged = loadVoices;
                 loadVoices();
+                // Chrome 有時需要延遲載入
+                setTimeout(loadVoices, 500);
+                setTimeout(loadVoices, 1500);
             }, []);
-            const speak = (text, checkMute) => {
-        if (checkMute || !window.speechSynthesis) return;
-        
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        if (targetVoice) {
-            utterance.voice = targetVoice;
-        }
-        
-        utterance.lang = 'zh-TW';
-        utterance.pitch = 1.1; 
-        utterance.rate = 0.95; 
-        
-        window.speechSynthesis.speak(utterance);
-    };
+
+            const speak = useCallback((text, checkMute) => {
+                if (checkMute || !window.speechSynthesis) return;
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (targetVoice) {
+                    utterance.voice = targetVoice;
+                }
+                utterance.lang = 'zh-TW';
+                utterance.pitch = 1.1;
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }, [targetVoice]);
 
             const currentQuestions = DATA[CATEGORIES[curCatIdx]];
             const currentQ = currentQuestions[curQIdx];
 
-            const praises = ["你真棒！", "太強了！", "一百分！", "好厲害！", "天才！"];
+            const praises = ["你真棒！", "太強了！", "一百分！", "好厲害！", "天才！", "超級棒！", "了不起！", "太優秀了！"];
+            const encourages = ["再想想看！", "加油，你可以的！", "差一點點！", "沒關係再試一次！"];
 
             // Reset when category changes
             useEffect(() => {
                 setCurQIdx(0);
                 setInput("");
+                setSelectedChoice(-1);
                 setFeedback('idle');
             }, [curCatIdx]);
 
-            // Reset when mode changes
+            // Reset when mode/question changes
             useEffect(() => {
                 setInput("");
+                setSelectedChoice(-1);
                 setFeedback('idle');
-                // Read question when switching to quiz
                 if(mode === 'quiz') {
                     setTimeout(() => speak(currentQ.q, isMuted), 500);
                 }
@@ -325,42 +709,37 @@
                 if (curQIdx < currentQuestions.length - 1) {
                     setCurQIdx(prev => prev + 1);
                 } else {
-                    // Loop back or stay
-                    setCurQIdx(0); 
+                    setCurQIdx(0);
                     speak("恭喜完成這個單元！", isMuted);
                 }
                 setFeedback('idle');
                 setInput("");
+                setSelectedChoice(-1);
             };
 
             const handlePrevQuestion = () => {
                 if (curQIdx > 0) setCurQIdx(prev => prev - 1);
             };
 
+            // 數字題檢查答案
             const handleCheck = () => {
                 if (feedback !== 'idle' || input === "") return;
+                setTotalAnswered(prev => prev + 1);
 
                 if (input === currentQ.a) {
-                    // CORRECT
                     setFeedback('correct');
+                    setScore(prev => prev + 1);
                     if (!isMuted) playDingDong();
-                    
                     setTimeout(() => speak("答對了！", isMuted), 600);
-                    
                     const randomPraise = praises[Math.floor(Math.random() * praises.length)];
                     setPraise(randomPraise);
-                    
                     setTimeout(() => speak(randomPraise, isMuted), 1400);
-
-                    // Auto Next
-                    setTimeout(() => {
-                        handleNextQuestion();
-                    }, 3500);
-
+                    setTimeout(() => { handleNextQuestion(); }, 3500);
                 } else {
-                    // WRONG
                     setFeedback('wrong');
-                    speak("答錯囉，再試一次", isMuted);
+                    if (!isMuted) playBuzz();
+                    const randomEncourage = encourages[Math.floor(Math.random() * encourages.length)];
+                    speak(randomEncourage, isMuted);
                     setTimeout(() => {
                         setInput("");
                         setFeedback('idle');
@@ -368,123 +747,208 @@
                 }
             };
 
+            // 選擇題選擇答案
+            const handleChoiceSelect = (idx) => {
+                if (feedback !== 'idle') return;
+                setSelectedChoice(idx);
+            };
+
+            // 選擇題確認答案
+            const handleChoiceConfirm = () => {
+                if (feedback !== 'idle' || selectedChoice === -1) return;
+                setTotalAnswered(prev => prev + 1);
+
+                if (selectedChoice === currentQ.a) {
+                    setFeedback('correct');
+                    setScore(prev => prev + 1);
+                    if (!isMuted) playDingDong();
+                    setTimeout(() => speak("答對了！", isMuted), 600);
+                    const randomPraise = praises[Math.floor(Math.random() * praises.length)];
+                    setPraise(randomPraise);
+                    setTimeout(() => speak(randomPraise, isMuted), 1400);
+                    setTimeout(() => { handleNextQuestion(); }, 3000);
+                } else {
+                    setFeedback('wrong');
+                    if (!isMuted) playBuzz();
+                    const randomEncourage = encourages[Math.floor(Math.random() * encourages.length)];
+                    speak(randomEncourage, isMuted);
+                    setTimeout(() => {
+                        setSelectedChoice(-1);
+                        setFeedback('idle');
+                    }, 2000);
+                }
+            };
+
+            // 計算總題數
+            const totalQuestions = Object.values(DATA).reduce((sum, arr) => sum + arr.length, 0);
+
             return (
                 <div className="flex flex-col h-full bg-white/30 backdrop-blur-sm">
-                    
+
                     {/* Header */}
-                    <div className="p-4 flex justify-between items-center bg-white/80 shadow-sm border-b-4 border-[var(--chiikawa-pink)] rounded-b-[30px] z-10">
-                        <h1 className="text-xl font-bold text-[var(--chiikawa-brown)] flex items-center gap-2">
-                            <span className="text-2xl">🐹</span> 安全小達人
+                    <div className="p-3 flex justify-between items-center bg-white/80 shadow-sm border-b-4 border-[var(--chiikawa-pink)] rounded-b-[30px] z-10">
+                        <h1 className="text-lg font-bold text-[var(--chiikawa-brown)] flex items-center gap-1">
+                            <span className="text-xl">🐹</span> 安全小達人
                         </h1>
-                        <button 
-                            onClick={() => setIsMuted(!isMuted)}
-                            className="text-2xl w-10 h-10 bg-[var(--chiikawa-yellow)] rounded-full flex items-center justify-center border-2 border-[var(--chiikawa-brown)]"
-                        >
-                            {isMuted ? "🔕" : "🔔"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {mode === 'quiz' && (
+                                <div className="text-xs bg-[var(--chiikawa-green)] text-white px-2 py-1 rounded-full font-bold">
+                                    {score}/{totalAnswered}
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setIsMuted(!isMuted)}
+                                className="text-xl w-9 h-9 bg-[var(--chiikawa-yellow)] rounded-full flex items-center justify-center border-2 border-[var(--chiikawa-brown)]"
+                            >
+                                {isMuted ? "🔕" : "🔔"}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Category Selector */}
-                    <div className="px-6 py-2">
-                        <select 
+                    <div className="px-4 py-1.5">
+                        <select
                             value={curCatIdx}
                             onChange={(e) => setCurCatIdx(Number(e.target.value))}
-                            className="w-full p-3 rounded-2xl border-2 border-[var(--chiikawa-blue)] bg-white text-[var(--chiikawa-brown)] font-bold text-lg outline-none text-center appearance-none"
-                            style={{ backgroundImage: 'none' }} 
+                            className="w-full p-2.5 rounded-2xl border-2 border-[var(--chiikawa-blue)] bg-white text-[var(--chiikawa-brown)] font-bold text-base outline-none text-center appearance-none"
+                            style={{ backgroundImage: 'none' }}
                         >
                             {CATEGORIES.map((cat, idx) => (
-                                <option key={cat} value={idx}>{cat}</option>
+                                <option key={cat} value={idx}>
+                                    {cat}（{DATA[cat].length}題）
+                                </option>
                             ))}
                         </select>
                     </div>
 
                     {/* Mode Tabs */}
-                    <div className="flex px-6 gap-2 mb-2">
-                        <button 
+                    <div className="flex px-4 gap-2 mb-1.5">
+                        <button
                             onClick={() => setMode('recite')}
-                            className={`flex-1 py-2 rounded-t-2xl font-bold ${mode === 'recite' ? 'tab-active' : 'tab-inactive'}`}
+                            className={`flex-1 py-2 rounded-t-2xl font-bold text-sm ${mode === 'recite' ? 'tab-active' : 'tab-inactive'}`}
                         >
                             📖 學習
                         </button>
-                        <button 
+                        <button
                             onClick={() => setMode('quiz')}
-                            className={`flex-1 py-2 rounded-t-2xl font-bold ${mode === 'quiz' ? 'tab-active' : 'tab-inactive'}`}
+                            className={`flex-1 py-2 rounded-t-2xl font-bold text-sm ${mode === 'quiz' ? 'tab-active' : 'tab-inactive'}`}
                         >
                             ✨ 測驗
                         </button>
                     </div>
 
-                    {/* Main Display Area (The Card) */}
-                    <div className="flex-1 px-4 pb-2 flex flex-col min-h-0">
-                        <div className={`chiikawa-card flex-1 p-6 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 ${feedback === 'correct' ? 'scale-105 border-[var(--chiikawa-green)]' : ''} ${feedback === 'wrong' ? 'shake border-[var(--chiikawa-red)]' : ''}`}>
-                            
+                    {/* Main Display Area */}
+                    <div className="flex-1 px-3 pb-1 flex flex-col min-h-0 overflow-hidden">
+                        <div className={`chiikawa-card flex-1 p-4 flex flex-col items-center relative overflow-y-auto transition-all duration-300 ${feedback === 'correct' ? 'scale-[1.02] border-[var(--chiikawa-green)]' : ''} ${feedback === 'wrong' ? 'shake border-[var(--chiikawa-red)]' : ''}`}>
+
                             {/* Question Number Badge */}
-                            <div className="absolute top-4 left-4 bg-[var(--chiikawa-blue)] text-white px-3 py-1 rounded-full text-sm font-bold">
-                                Q{curQIdx + 1}/{currentQuestions.length}
+                            <div className="flex justify-between w-full mb-2">
+                                <div className="bg-[var(--chiikawa-blue)] text-white px-3 py-1 rounded-full text-xs font-bold">
+                                    Q{curQIdx + 1}/{currentQuestions.length}
+                                </div>
+                                <div className={`px-3 py-1 rounded-full text-xs font-bold ${currentQ.type === 'number' ? 'bg-[var(--chiikawa-orange)] text-[var(--chiikawa-brown)]' : 'bg-[var(--chiikawa-pink)] text-white'}`}>
+                                    {currentQ.type === 'number' ? '🔢 數字題' : '📝 選擇題'}
+                                </div>
                             </div>
 
                             {/* Content */}
-                            <div className="w-full text-center z-10">
+                            <div className="w-full text-center z-10 flex-1">
                                 {mode === 'recite' ? (
                                     <>
-                                        <div className="text-xl font-bold mb-4">{currentQ.q}</div>
-                                        <div className="text-4xl font-black text-[var(--chiikawa-pink)] mb-2">
-                                            {currentQ.displayA || currentQ.a}
-                                            <span className="text-2xl text-[var(--chiikawa-brown)] ml-1">{currentQ.unit}</span>
-                                        </div>
-                                        <div className="mt-4 p-3 bg-[var(--chiikawa-yellow)]/30 rounded-xl text-md leading-relaxed">
+                                        <div className="text-lg font-bold mb-3">{currentQ.q}</div>
+                                        {currentQ.type === 'number' ? (
+                                            <div className="text-3xl font-black text-[var(--chiikawa-pink)] mb-2">
+                                                {currentQ.displayA || currentQ.a}
+                                                <span className="text-xl text-[var(--chiikawa-brown)] ml-1">{currentQ.unit}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="text-xl font-black text-[var(--chiikawa-pink)] mb-2 px-2 py-2 bg-pink-50 rounded-xl">
+                                                {currentQ.choices[currentQ.a]}
+                                            </div>
+                                        )}
+                                        <div className="mt-3 p-3 bg-[var(--chiikawa-yellow)]/30 rounded-xl text-sm leading-relaxed text-left whitespace-pre-line">
                                             {currentQ.context}
                                         </div>
-                                        
-                                        {/* Navigation for Recite Mode */}
-                                        <div className="flex justify-between mt-6 w-full px-4">
-                                            <button onClick={handlePrevQuestion} disabled={curQIdx===0} className="w-12 h-12 bg-[var(--chiikawa-blue)] rounded-full text-white text-2xl disabled:opacity-30">←</button>
-                                            <button onClick={() => speak(currentQ.context, isMuted)} className="w-12 h-12 bg-[var(--chiikawa-pink)] rounded-full text-white text-xl">🔊</button>
-                                            <button onClick={handleNextQuestion} className="w-12 h-12 bg-[var(--chiikawa-blue)] rounded-full text-white text-2xl">→</button>
+
+                                        <div className="flex justify-between mt-4 w-full px-4">
+                                            <button onClick={handlePrevQuestion} disabled={curQIdx===0} className="w-11 h-11 bg-[var(--chiikawa-blue)] rounded-full text-white text-xl disabled:opacity-30">←</button>
+                                            <button onClick={() => speak(currentQ.context, isMuted)} className="w-11 h-11 bg-[var(--chiikawa-pink)] rounded-full text-white text-lg">🔊</button>
+                                            <button onClick={handleNextQuestion} className="w-11 h-11 bg-[var(--chiikawa-blue)] rounded-full text-white text-xl">→</button>
                                         </div>
                                     </>
                                 ) : (
                                     <>
-                                        <div className="text-xl font-bold mb-6">{currentQ.q}</div>
-                                        {/* Answer Box */}
-                                        <div className="bg-[var(--chiikawa-brown)] text-[var(--chiikawa-yellow)] p-4 rounded-2xl text-4xl font-mono min-h-[80px] flex items-center justify-center border-4 border-gray-300 shadow-inner w-full max-w-[200px] mx-auto mb-2">
-                                            {input || "?"}
-                                        </div>
-                                        <div className="text-sm text-gray-400 mb-4 h-5">{currentQ.inputHint}</div>
+                                        <div className="text-base font-bold mb-3 text-left">{currentQ.q}</div>
 
-                                        {/* Feedback Overlay Text */}
+                                        {currentQ.type === 'number' ? (
+                                            <>
+                                                <div className="bg-[var(--chiikawa-brown)] text-[var(--chiikawa-yellow)] p-3 rounded-2xl text-3xl font-mono min-h-[60px] flex items-center justify-center border-4 border-gray-300 shadow-inner w-full max-w-[180px] mx-auto mb-1">
+                                                    {input || "?"}
+                                                </div>
+                                                <div className="text-xs text-gray-400 mb-1 h-4">{currentQ.inputHint}</div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ChoicePanel
+                                                    choices={currentQ.choices}
+                                                    onSelect={handleChoiceSelect}
+                                                    feedback={feedback}
+                                                    selectedIdx={selectedChoice}
+                                                    correctIdx={currentQ.a}
+                                                    disabled={feedback !== 'idle'}
+                                                />
+                                                {feedback === 'idle' && selectedChoice >= 0 && (
+                                                    <button
+                                                        onClick={handleChoiceConfirm}
+                                                        className="mt-3 btn-base px-8 py-2 text-lg mx-auto"
+                                                        style={{ backgroundColor: 'var(--chiikawa-green)', color: 'white' }}
+                                                    >
+                                                        ✨ 確定
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* Feedback Overlay */}
                                         {feedback === 'correct' && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20 flex-col">
-                                                <div className="text-6xl mb-2">🎉</div>
-                                                <div className="text-3xl font-black text-[var(--chiikawa-green)]">{praise}</div>
+                                            <div className="absolute inset-0 flex items-center justify-center bg-white/85 z-20 flex-col pop-in">
+                                                <div className="text-5xl mb-2">🎉</div>
+                                                <div className="text-2xl font-black text-[var(--chiikawa-green)]">{praise}</div>
                                             </div>
                                         )}
                                         {feedback === 'wrong' && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20">
-                                                <div className="text-3xl font-black text-[var(--chiikawa-red)]">再試試看！</div>
+                                            <div className="absolute inset-0 flex items-center justify-center bg-white/85 z-20 pop-in">
+                                                <div className="text-2xl font-black text-[var(--chiikawa-red)]">
+                                                    {encourages[Math.floor(Math.random() * encourages.length)]}
+                                                </div>
                                             </div>
                                         )}
                                     </>
                                 )}
                             </div>
 
-                            {/* Decorative Background Elements */}
-                            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-[var(--chiikawa-yellow)] rounded-full opacity-20"></div>
-                            <div className="absolute top-10 -left-10 w-20 h-20 bg-[var(--chiikawa-pink)] rounded-full opacity-20"></div>
+                            {/* Decorative */}
+                            <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[var(--chiikawa-yellow)] rounded-full opacity-20"></div>
+                            <div className="absolute top-10 -left-10 w-16 h-16 bg-[var(--chiikawa-pink)] rounded-full opacity-20"></div>
                         </div>
                     </div>
 
-                    {/* Keypad (Only visible in Quiz Mode) */}
-                    {mode === 'quiz' && (
+                    {/* Keypad (Only for number-type quiz questions) */}
+                    {mode === 'quiz' && currentQ.type === 'number' && (
                         <div className="flex-none">
-                            <Keypad 
-                                onInput={handleInput} 
-                                onClear={handleClear} 
+                            <Keypad
+                                onInput={handleInput}
+                                onClear={handleClear}
                                 onEnter={handleCheck}
                                 disabled={feedback !== 'idle'}
                             />
                         </div>
                     )}
+
+                    {/* Bottom info bar for total questions */}
+                    <div className="text-center text-xs text-gray-400 py-1">
+                        共 {totalQuestions} 題 ｜ 資料來源：台灣全民安全指引（國防部）
+                    </div>
                 </div>
             );
         };
@@ -492,25 +956,5 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
-    
-    <style>
-        /* CSS Animation for Wrong Answer */
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-        .shake {
-            animation: shake 0.5s;
-        }
-    </style>
 </body>
 </html>
